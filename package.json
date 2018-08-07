@@ -1,0 +1,12 @@
+{
+  "name": "EloquentCorpsePhaser",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "grunt": "^1.0.3",
+    "grunt-contrib-connect": "^1.0.2"
+  }
+}
