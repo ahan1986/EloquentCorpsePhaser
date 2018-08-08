@@ -175,13 +175,14 @@ function hitWorldBounds(sprite) {
 }
 
 function updateCounter() {
+  // count downs from 60 seconds and adds the number of times the shape bounces on it's respective shape.  Once the timer hits '0', an alert pops up showing your score.
   this.total--;
   this.timer.setText('Timer: ' + this.total);
   this.scoreSet.setText('Score: ' + this.score);
   console.log(this.timer.text);
   if(this.timer.text == "Timer: 0") {
-    console.log("hello");
     alert("Your final score is " + this.score + "!")
+    
   }
 }
 
