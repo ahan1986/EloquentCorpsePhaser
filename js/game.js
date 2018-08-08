@@ -49,8 +49,9 @@ class Main extends Phaser.Scene {
     super({ key: "main" });
     // Declaring shared variables so that all methods can access them
     this.timer;
-    this.total = 0;
-    this.score;
+    this.total = 60;
+    this.scoreSet;
+    this.score = 0;
     this.timedEvent;
     this.square;
     this.bouncy;
@@ -68,6 +69,7 @@ class Main extends Phaser.Scene {
     
     //creating timer on the background
     this.timer = this.add.text(20, 20, '', {fontSize: "40px", fill: '#000'});
+    this.scoreSet = this.add.text(350, 20, '', {fontSize: "40px", fill: '#000'});
 
     // every second, it will call updateCounter method
     this.timedEvent = this.time.addEvent({
@@ -160,8 +162,10 @@ class Main extends Phaser.Scene {
   }
 
   update() {
+    // everytime the respective shape bounces on the draggable shapes, it counts the score.
     if(this.bouncy.body.touching.down) {
       console.log("touched Down!");
+      this.score++;
     }
    }
 }
@@ -171,8 +175,14 @@ function hitWorldBounds(sprite) {
 }
 
 function updateCounter() {
-  this.total++;
+  this.total--;
   this.timer.setText('Timer: ' + this.total);
+  this.scoreSet.setText('Score: ' + this.score);
+  console.log(this.timer.text);
+  if(this.timer.text == "Timer: 0") {
+    console.log("hello");
+    alert("Your final score is " + this.score + "!")
+  }
 }
 
 // Define game configurations
