@@ -1,3 +1,4 @@
+//====================== Class for the intro page ======================
 class Intro extends Phaser.Scene {
   constructor() {
     super({ key: "intro" });
@@ -40,11 +41,19 @@ class Intro extends Phaser.Scene {
 
   // Required by Phaser to update game objects
   update() { }
-}
+};
 
+//====================== Class for the Main page ======================
 class Main extends Phaser.Scene {
   constructor() {
     super({ key: "main" });
+    // Declaring shared variables so that all methods can access them
+    this.timer;
+    this.total = 0;
+    this.score;
+    this.timedEvent;
+    this.square;
+    this.bouncy;
   }
 
   preload() {
@@ -53,16 +62,27 @@ class Main extends Phaser.Scene {
     this.load.image("circle", "assets/circle.png");
     this.load.image("triangle", "assets/triangle.png");
     this.load.image("squiggle", "assets/squiggle.png");
-
   }
 
   create() {
+    
+    //creating timer on the background
+    this.timer = this.add.text(20, 20, '', {fontSize: "40px", fill: '#000'});
+
+    // every second, it will call updateCounter method
+    this.timedEvent = this.time.addEvent({
+      delay: 1000,
+      callback: updateCounter,
+      callbackScope: this,
+      loop: true
+    });
+
     this.cameras.main.setBackgroundColor("#E8CFBD");
     // Allows player to drag background
-    var memphis = this.add.sprite(400, 300, "memphis").setInteractive();
+    var memphis = this.add.sprite(400, 380, "memphis").setInteractive();
 
     // Allows player to drag object
-    var square = this.physics.add.sprite(200, 300, "square").setInteractive();
+    this.square = this.physics.add.sprite(200, 300, "square").setInteractive();
     var circle = this.add.sprite(500, 500, "circle");
     // Allows player to drag object
     var triangle = this.physics.add.sprite(300, 100, "triangle").setInteractive();
@@ -73,41 +93,43 @@ class Main extends Phaser.Scene {
     //==========================================
 
     //Makes objects unaffected by gravity or collision inertia
-    square.body.allowGravity = false;
-    square.body.immovable = true;
+    this.square.body.allowGravity = false;
+    this.square.body.immovable = true; //setting immovable to true will fix the object in place whereas false will make it fall to the ground bc of gravity
     triangle.body.allowGravity = false;
     triangle.body.immovable = true;
 
     //A perpetual bouncy object
-    var bouncy = this.physics.add.sprite(50, 50, "square")
-    bouncy.displayWidth = Math.round(bouncy.width * .5);
-    bouncy.displayHeight = Math.round(bouncy.height * .5);
-    bouncy.setTint(800080)
-    bouncy.setVelocity(100, 200).setBounce(1, 1).setCollideWorldBounds(true).setGravity(0, 0)
+    this.bouncy = this.physics.add.sprite(50, 50, "square")
+    this.bouncy.displayHeight = Math.round(this.bouncy.height * .5);
+    this.bouncy.setTint(800080)
+    this.bouncy.setVelocity(50, 10).setBounce(1, 1).setCollideWorldBounds(true).setGravity(0, 0)
+    this.bouncy.displayWidth = Math.round(this.bouncy.width * .5);
 
     //Changes what bouncy will collide with and what it looks like
-    var bounceOff = this.physics.add.collider(bouncy, square)
-    bouncy.body.onWorldBounds = true;
+    var bounceOff = this.physics.add.collider(this.bouncy, this.square)
+    this.bouncy.body.onWorldBounds = true;
     this.physics.world.on('worldbounds', function(body){
-      if(bouncy.texture.key === "square"){
-        bouncy.setTexture("triangle");
+      if(this.bouncy.texture.key === "square"){
+        this.bouncy.setTexture("triangle");
         this.physics.world.removeCollider(bounceOff);
-        bounceOff = this.physics.add.collider(bouncy, triangle);
+        bounceOff = this.physics.add.collider(this.bouncy, triangle);
       } else {
-        bouncy.setTexture("square");
+        this.bouncy.setTexture("square");
         this.physics.world.removeCollider(bounceOff);
-        bounceOff = this.physics.add.collider(bouncy, square);
+        bounceOff = this.physics.add.collider(this.bouncy, this.square);
       }
   },this);
 
     //==========================================
 
+    //==========================================
 
-    square.on("pointerover", function () {
+
+    this.square.on("pointerover", function () {
       this.setTint(0x00ff00);
     });
 
-    square.on("pointerout", function () {
+    this.square.on("pointerout", function () {
       this.clearTint();
     });
 
@@ -119,7 +141,7 @@ class Main extends Phaser.Scene {
       this.clearTint();
     });
 
-    this.input.setDraggable(square);
+    this.input.setDraggable(this.square);
     this.input.setDraggable(triangle);
     this.input.setDraggable(memphis);
 
@@ -137,11 +159,20 @@ class Main extends Phaser.Scene {
     });
   }
 
-  update() { }
+  update() {
+    if(this.bouncy.body.touching.down) {
+      console.log("touched Down!");
+    }
+   }
 }
 
 function hitWorldBounds(sprite) {
   sprite.setTexture("triangle")
+}
+
+function updateCounter() {
+  this.total++;
+  this.timer.setText('Timer: ' + this.total);
 }
 
 // Define game configurations
@@ -152,7 +183,7 @@ let config = {
   physics: {
     default: "arcade",
     arcade: {
-      gravity: { y: 80 }, // for defining global gravity
+      gravity: { y: 800 }, // for defining global gravity
       debug: false // for testing sprites
     }
   },
