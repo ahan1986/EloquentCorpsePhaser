@@ -1,13 +1,9 @@
-//====================== Class for the intro page ======================
+//====================== Class for the Intro page ======================
 class Intro extends Phaser.Scene {
   constructor() {
     super({ key: "intro" });
   }
 
-  // Required by Phaser to preload assets
-  preload() { }
-
-  // Required by Phaser to render assets in canvas
   create() {
     // Set background color to egg yolk yellow
     this.cameras.main.setBackgroundColor("#FFBE28");
@@ -20,6 +16,7 @@ class Intro extends Phaser.Scene {
       .setFontFamily("Arial")
       .setPadding({ left: 16 })
       .setBackgroundColor("#0000ff");
+
     // Add "Exquis" with a bright blue background
     this.add
       .text(250, 200, "Exquis")
@@ -29,7 +26,8 @@ class Intro extends Phaser.Scene {
       .setPadding({ right: 16 })
       .setBackgroundColor("#0000ff");
     this.input.manager.enabled = true;
-    // on-click launches next scene ("main");
+
+    // Click launches the main scene
     this.input.once(
       "pointerup",
       function (event) {
@@ -38,153 +36,212 @@ class Intro extends Phaser.Scene {
       this
     );
   }
-
-  // Required by Phaser to update game objects
-  update() { }
 };
 
 //====================== Class for the Main page ======================
 class Main extends Phaser.Scene {
+
   constructor() {
     super({ key: "main" });
     // Declaring shared variables so that all methods can access them
-    this.timer;
-    this.total = 60;
-    this.scoreSet;
-    this.score = 0;
-    this.timedEvent;
-    this.square;
+    this.TIME_MAX = 120;
+    this.timerText;
+    this.timeRemaining;
+    this.timerEvent;
+    this.scoreText;
+    this.score;
     this.bouncy;
+    this.bouncyEmitter;
+    this.background;
   }
 
   preload() {
-    this.load.image("memphis","assets/memphis.png");
-    this.load.image("square", "assets/square.png");
-    this.load.image("circle", "assets/circle.png");
-    this.load.image("triangle", "assets/triangle.png");
-    this.load.image("squiggle", "assets/squiggle.png");
+    this.load.image("memphis", "assets/image/memphis.png");
+    this.load.image("square", "assets/image/square.png");
+    this.load.image("circle", "assets/image/circle.png");
+    this.load.image("triangle", "assets/image/triangle.png");
+    this.load.image("squiggle", "assets/image/squiggle.png");
+    this.load.audio("track1", "assets/audio/track1.mp3");
+    this.load.audio("track2", "assets/audio/track2.mp3");
+    this.load.audio("plonk", "assets/audio/plonk.mp3");
   }
 
   create() {
-    
-    //creating timer on the background
-    this.timer = this.add.text(20, 20, '', {fontSize: "40px", fill: '#000'});
-    this.scoreSet = this.add.text(350, 20, '', {fontSize: "40px", fill: '#000'});
+    // Reset game
+    this.timeRemaining = this.TIME_MAX;
+    this.score = 0;
 
-    // every second, it will call updateCounter method
-    this.timedEvent = this.time.addEvent({
+
+    /* ---------- Cameras ---------- */
+    this.cameras.main.setBackgroundColor("#E8CFBD");
+
+
+    /* ---------- Text ---------- */
+    // Create text labels for the timer and score
+    this.timerText = this.add.text(20, 20, '', { fontSize: "40px", fill: '#000' });
+    this.scoreText = this.add.text(350, 20, '', { fontSize: "40px", fill: '#000' });
+
+
+    /* ---------- Events ---------- */
+    // Call updateTimer every second
+    this.timerEvent = this.time.addEvent({
       delay: 1000,
-      callback: updateCounter,
+      callback: this.updateTimer,
       callbackScope: this,
       loop: true
     });
 
-    this.cameras.main.setBackgroundColor("#E8CFBD");
-    // Allows player to drag background
-    var memphis = this.add.sprite(400, 380, "memphis").setInteractive();
 
-    // Allows player to drag object
-    this.square = this.physics.add.sprite(200, 300, "square").setInteractive();
-    var circle = this.add.sprite(500, 500, "circle");
-    // Allows player to drag object
-    var triangle = this.physics.add.sprite(300, 100, "triangle").setInteractive();
-    var squiggle = this.add.sprite(100, 200, "squiggle");
-    
+    /* ---------- Sprites ---------- */
+    // Background
+    this.background = this.add.sprite(0, 380, "memphis");
+    this.background.x = -1 * (this.background.width / 2);
+
+    // Allow player to drag the shape objects
+    const square = this.physics.add.sprite(200, 300, "square");
+    const circle = this.physics.add.sprite(500, 500, "circle");
+    const triangle = this.physics.add.sprite(300, 100, "triangle");
+
+    const squiggle = this.add.sprite(100, 200, "squiggle");
+
+
+    /* ---------- Sounds ---------- */
+    // Noise when the correct shape is hit
+    this.plonk = this.sound.add('plonk');
+
+
+    /* ---------- Music ---------- */
+    // Original tracks
+    const track1 = this.sound.add('track1');
+    //loops track 1 due to its shorter length
+    track1.loop = true;
+    const track2 = this.sound.add('track2');
+    //array with the two tracks
+    const jukeBox = [track1, track2];
+
+    // Select a random track when the game is restarted
+    const randomTrack = Phaser.Math.RND.pick(jukeBox);
+    randomTrack.play();
 
 
     //==========================================
+    // Set physics properties and events for each shape
+    const shapes = [square, triangle, circle];
+    shapes.forEach(shape => {
+      // Make shape objects unaffected by gravity
+      shape.body.allowGravity = false;
 
-    //Makes objects unaffected by gravity or collision inertia
-    this.square.body.allowGravity = false;
-    this.square.body.immovable = true; //setting immovable to true will fix the object in place whereas false will make it fall to the ground bc of gravity
-    triangle.body.allowGravity = false;
-    triangle.body.immovable = true;
+      // Setting immovable to true will fix the object in place whereas false will 
+      // make it fall to the ground because of gravity
+      shape.body.immovable = true;
 
-    //A perpetual bouncy object
-    this.bouncy = this.physics.add.sprite(50, 50, "square")
+      shape.body.allowRotation = true;
+
+      // Tint shape on hover
+      shape
+        .on("pointerover", () => {
+          shape.setTint(0x00ff00);
+        })
+        .on("pointerout", () => {
+          shape.clearTint();
+      });
+
+      // Set shape as draggable
+      shape.setInteractive();
+      this.input.setDraggable(shape);
+    })
+
+    // Function to pick a random shape
+    const randomShape = () => Phaser.Math.RND.pick(shapes);
+
+    // A perpetual bouncy object
+    let currentBouncyShape = square;
+    this.bouncy = this.physics.add.sprite(50, 50, currentBouncyShape.texture.key);
     this.bouncy.displayHeight = Math.round(this.bouncy.height * .5);
-    this.bouncy.setTint(800080)
-    this.bouncy.setVelocity(50, 10).setBounce(1, 1).setCollideWorldBounds(true).setGravity(0, 0)
     this.bouncy.displayWidth = Math.round(this.bouncy.width * .5);
+    this.bouncy.setTint(800080);
+    this.bouncy.setVelocity(50, 10).setBounce(1, 1).setCollideWorldBounds(true).setGravity(0, 0);
 
-    //Changes what bouncy will collide with and what it looks like
-    var bounceOff = this.physics.add.collider(this.bouncy, this.square)
+    // Initially set bouncy to a random shape
+    let bouncyCollider = this.physics.add.collider(this.bouncy, currentBouncyShape);
+    const bouncyParticles = this.add.particles(currentBouncyShape.texture.key);
+    this.bouncyEmitter = bouncyParticles.createEmitter({
+      scale: { start: 0.2, end: 0 },
+      alpha: { start: 1, end: 0 },
+      speed: { min: -200, max: 200 },
+      lifespan: { min: 1000, max: 3000 },
+      gravityY: 800,
+      follow: this.bouncy,
+      frequency: -1,
+      blendMode: 'ADD'
+    });
+
+    // When bouncy hits the world bounds, change its shape
     this.bouncy.body.onWorldBounds = true;
-    this.physics.world.on('worldbounds', function(body){
-      if(this.bouncy.texture.key === "square"){
-        this.bouncy.setTexture("triangle");
-        this.physics.world.removeCollider(bounceOff);
-        bounceOff = this.physics.add.collider(this.bouncy, triangle);
-      } else {
-        this.bouncy.setTexture("square");
-        this.physics.world.removeCollider(bounceOff);
-        bounceOff = this.physics.add.collider(this.bouncy, this.square);
+    this.physics.world.on('worldbounds', () => {
+      // Ensure the next shape is different than the current one
+      let nextBouncyShape = currentBouncyShape;
+      while (nextBouncyShape === currentBouncyShape) {
+        nextBouncyShape = randomShape();
       }
-  },this);
+      // Replace the current bouncy collider
+      this.physics.world.removeCollider(bouncyCollider);
+      bouncyCollider = this.physics.add.collider(this.bouncy, nextBouncyShape);
 
-    //==========================================
-
-    //==========================================
-
-
-    this.square.on("pointerover", function () {
-      this.setTint(0x00ff00);
+      // Set the texture of bouncy
+      this.bouncy.setTexture(nextBouncyShape.texture.key);
+      bouncyParticles.setTexture(nextBouncyShape.texture.key);
+      currentBouncyShape = nextBouncyShape;
     });
 
-    this.square.on("pointerout", function () {
-      this.clearTint();
-    });
 
-    triangle.on("pointerover", function () {
-      this.setTint(0x00ff00);
-    });
-
-    triangle.on("pointerout", function () {
-      this.clearTint();
-    });
-
-    this.input.setDraggable(this.square);
-    this.input.setDraggable(triangle);
-    this.input.setDraggable(memphis);
-
-    this.input.on("dragstart", function (pointer, gameObject) {
-      gameObject.setTint(0xff0000);
-    });
-
-    this.input.on("drag", function (pointer, gameObject, dragX, dragY) {
-      gameObject.x = dragX;
-      gameObject.y = dragY;
-    });
-
-    this.input.on("dragend", function (pointer, gameObject) {
-      gameObject.clearTint();
-    });
+    // Set events for draggable shapes
+    this.input
+      .on("dragstart", (pointer, gameObject) => {
+        gameObject.setTint(0xff0000);
+      })
+      .on("drag", (pointer, gameObject, dragX, dragY) => {
+        gameObject.x = dragX;
+        gameObject.y = dragY;
+      })
+      .on("dragend", (pointer, gameObject) => {
+        gameObject.clearTint();
+      });
   }
 
   update() {
-    // everytime the respective shape bounces on the draggable shapes, it counts the score.
-    if(this.bouncy.body.touching.down) {
-      console.log("touched Down!");
+    // Every time the respective shape bounces on the draggable shapes, increment the score and play a sound.
+    if (this.bouncy.body.touching.down) {
       this.score++;
+      this.bouncyEmitter.explode(Phaser.Math.RND.between(10, 30));
+      this.plonk.play();
     }
-   }
-}
 
-function hitWorldBounds(sprite) {
-  sprite.setTexture("triangle")
-}
+    // Update score
+    this.scoreText.setText('Score: ' + this.score);
 
-function updateCounter() {
-  // count downs from 60 seconds and adds the number of times the shape bounces on it's respective shape.  Once the timer hits '0', an alert pops up showing your score.
-  this.total--;
-  this.timer.setText('Timer: ' + this.total);
-  this.scoreSet.setText('Score: ' + this.score);
-  console.log(this.timer.text);
-  if(this.timer.text == "Timer: 0") {
-    alert("Your final score is " + this.score + "!")
-    
+    // Scroll background faster as the timer gets closer to 0
+    this.background.x += (this.TIME_MAX / this.timeRemaining) * 3;
+    if (this.background.x > game.canvas.width + (this.background.width / 2)) {
+      // Reset background
+      this.background.x = -(this.background.width / 2);
+    }
+  }
+
+  updateTimer() {
+    // Count down from 60 seconds and add the number of times the shape bounces on it's respective shape.
+    this.timeRemaining--;
+    this.timerText.setText('Timer: ' + this.timeRemaining);
+
+    // Once the timer hits '0', an alert pops up showing your score and resets the game.
+    if (this.timeRemaining === 0) {
+      alert("Your final score is " + this.score + "!");
+      this.scene.restart();
+    }
   }
 }
+
+
 
 // Define game configurations
 let config = {
